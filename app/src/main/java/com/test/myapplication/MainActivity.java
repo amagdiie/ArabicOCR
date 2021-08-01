@@ -108,13 +108,15 @@ public class MainActivity extends AppCompatActivity {
                         BitmapFactory.Options options = new BitmapFactory.Options();
                         bmp = BitmapFactory.decodeStream(is, null, options);
 
+                        doOCR(is);
+
                     } catch (Exception ex) {
                         Log.i(getClass().getSimpleName(), ex.getMessage());
                         Toast.makeText(context, errorConvert, Toast.LENGTH_SHORT).show();
                     }
 
                     firstImage.setImageBitmap(bmp);
-                    doOCR(bmp);
+
 
                     OutputStream os;
                     try {
@@ -203,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private void doOCR(Bitmap bitmap) {
+    private void doOCR(InputStream bitmap) {
         if (mProgressDialog == null) {
             mProgressDialog = ProgressDialog.show(this, "Processing",
                     "Doing OCR...", true);
@@ -213,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(() -> runOnUiThread(() -> {
 
 
-            imageString = getStringImage(bitmap);
+//            imageString = getStringImage(bitmap);
 
             Log.e("Ahmed", "PATH: "+photoURI1.getPath());
             Log.e("Ahmed", "URI: "+photoURI1.toString());
@@ -221,12 +223,20 @@ public class MainActivity extends AppCompatActivity {
 
 //            Log.e("Ahmed", "imageString: "+imageString);
 
+            try {
+                byte[] inputData = getBytes(bitmap);
+                PyObject outPut = pyObject.callAttr("main", inputData);
 
-            PyObject outPut = pyObject.callAttr("main", mCurrentPhotoPath);
+                ocrText.setText(outPut.toString());
 
-            ocrText.setText(outPut.toString());
+                mProgressDialog.dismiss();
+            } catch (IOException e) {
+                e.printStackTrace();
+                mProgressDialog.dismiss();
+            }
 
-            mProgressDialog.dismiss();
+
+
         })).start();
     }
 
@@ -236,6 +246,18 @@ public class MainActivity extends AppCompatActivity {
 
         byte[] imageBytes = baos.toByteArray();
         return Base64.encodeToString(imageBytes, Base64.DEFAULT);
+    }
+
+    public byte[] getBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+        int bufferSize = 1024;
+        byte[] buffer = new byte[bufferSize];
+
+        int len = 0;
+        while ((len = inputStream.read(buffer)) != -1) {
+            byteBuffer.write(buffer, 0, len);
+        }
+        return byteBuffer.toByteArray();
     }
 
 }
